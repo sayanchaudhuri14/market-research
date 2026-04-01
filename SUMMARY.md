@@ -111,6 +111,36 @@ Bearish signals are far more abundant and stronger than bullish. NIFTY systemati
 
 ---
 
+## V3 Analysis (`v3/`)
+
+**Goal:** Add 4 new markets not in V2, test only combinations that include at least 1 new signal.
+
+### New Markets Added
+| Ticker | Market | Rationale |
+|---|---|---|
+| `000001.SS` | China SSE | Closes 15 min before India opens — fully resolved pre-market |
+| `^HSI` | Hang Seng | Independent Asia sentiment beyond SGX |
+| `CL=F` | WTI Crude Oil | India imports 85% of oil — oil price affects inflation/FII flows |
+| `DX-Y.NYB` | US Dollar Index | Strong dollar = FII outflows from India |
+
+### Results
+- **4,752 new combinations tested** (size 2–4, at least 1 new signal)
+- **124 new reliable signals** found (p<0.05, N≥40)
+- **Best new bearish:** China DOWN + HangSeng DOWN + DAX UP + Gap Up → P(DOWN)=72.2%, Edge=+17.7%
+- **Best new bullish:** HangSeng UP + Oil UP + Gap Down → P(UP)=72.7%, Edge=+27.2%
+
+### V3 vs V2 Backtest Comparison (SL=40%, TP=40%)
+| Metric | V2 (original) | V3 (new bullish) | Difference |
+|---|---|---|---|
+| Total P&L | Rs +1,13,260 | Rs +1,11,701 | Rs -1,559 (-1.4%) |
+| Trades | 162 | 153 | -9 fewer |
+| Win rate | 64.2% | 67.3% | +3.1% |
+| Bullish win rate | 62.6% | 68.3% | +5.7% |
+
+**Verdict: V2 signals retained.** V3 new signals are higher quality but lower frequency. Marginal P&L difference not worth the added complexity. V2 top-3 bearish and bullish remain the active signals.
+
+---
+
 ## Options Backtesting (`backtesting/`)
 
 ### Setup
@@ -136,7 +166,7 @@ Bearish signals are far more abundant and stronger than bullish. NIFTY systemati
 - **Neutral days:** skipped, no trade
 
 ### Audit Fixes Applied
-Four critical bugs were identified and fixed before final results:
+Four critical bugs identified and fixed before final results:
 
 | Bug | Before | After |
 |---|---|---|
@@ -166,7 +196,6 @@ Four critical bugs were identified and fixed before final results:
 - At TP=55%, only 25% of trades actually hit target (41/162) vs 41% at TP=40% (66/162)
 - The Rs 7,000 extra gain over 3 years is marginal and likely overfitted to this dataset
 - At TP=40%, the strategy is more repeatable and psychologically easier to execute
-- 41% TP hit rate means nearly every other trade exits cleanly — builds confidence
 
 ---
 
@@ -203,89 +232,123 @@ Four critical bugs were identified and fixed before final results:
 
 ---
 
-## Daily Workflow — `run_everyday.ipynb`
+## Daily Notebooks
 
-**Location:** Project root  
-**Purpose:** Replace all analysis notebooks with a single action-oriented daily tool
+### `run_everyday.ipynb` — Morning signal (run each trading day)
 
-### Two-Phase Structure
-
-**Phase 1 — Pre-market (before 9:15 AM)**
-Run Cells 1 → 2 → 3 → 4.
+**Phase 1 — Pre-market (before 9:15 AM):** Run Cells 1→2→3→4
 - Fetches global data automatically (yfinance)
 - Computes all non-gap signals
-- Checks top-3 bearish + top-3 bullish combos (gap combos excluded)
+- Checks top-3 bearish + top-3 bullish combos (gap combos excluded pre-market)
 - Outputs: BEARISH / BULLISH / NEUTRAL / CONFLICT
 
-**Phase 2 — Post-open (at/after 9:15 AM)**
-Enter actual NIFTY open in Cell 5, run Cell 6.
-- Updates gap signals (Gap Up / Gap Up Strong / Gap Down)
-- Re-checks all 6 combos including gap-based ones
+**Phase 2 — Post-open (at/after 9:15 AM):** Run Cells 5→6
+- Enter actual NIFTY open price in Cell 5
+- Computes gap, re-checks all 6 combos including gap-based ones
 - Outputs: final signal + exact strike to buy + SL/TP levels
 
-### Execution Guide (from Cell 6 output)
-```
-Strike     : 1-OTM weekly expiry (nearest Thursday)
-BEARISH    : Buy PE (ATM − 50)
-BULLISH    : Buy CE (ATM + 50)
-Stop Loss  : Exit if premium falls 40% from entry price
-Profit Tgt : Exit if premium rises 40% from entry price  
-Hard exit  : Close by 10:15 AM regardless of P&L
-Lot size   : 1 lot = 75 units
-```
+**Error handling added:**
+- Weekend/holiday guard — exits cleanly if market is closed
+- Indian market holiday detection — halts if NIFTY data unavailable
+- Per-indicator missing data warnings — signals default to False, user is notified
+- Data staleness check — data older than 5 days treated as missing
+- Sanity check on NIFTY open — warns if gap >5% (likely typo)
 
-### Key Config (must stay in sync with backtest)
-```python
-GAP_LARGE_THRESHOLD  = 0.0050   # 0.50%
-VIX_RISING_THRESHOLD = 0.03     # 3%
-STOP_LOSS_PCT        = 0.40
-PROFIT_TARGET_PCT    = 0.40
-BASE_RATE            = 54.5
+### `analyse_today.ipynb` — Post-market review (run after 3:30 PM)
+
+**Purpose:** After the market closes, check if the strategy would have worked today.  
+**Fully automatic** — no manual input required.
+
+**What it does:**
+1. Fetches all global overnight data + today's NIFTY 1-min intraday data + India VIX
+2. Computes all signals (gap now known)
+3. Determines which combo fired (if any)
+4. Runs full BS simulation minute-by-minute on actual today's prices
+5. Reports: entry price, exit price, exit reason (SL/TP/10:15), P&L in Rs, whether prediction was correct
+
+**Output example:**
+```
+SIGNAL: BEARISH  (Gap Up + Prev India DOWN + US UP + SGX UP)
+RESULT: PROFIT  (Target hit at 09:43)
+  Entry : 87.0 pts  (Rs 6,525 per lot)
+  Exit  : 121.8 pts  at 09:43
+  P&L   : Rs +2,527  (1 lot, after brokerage)
+  Predicted: DOWN  |  Actual: DOWN  |  Correct: YES
 ```
 
 ---
 
-## Automation Path
+## Key Config (must stay in sync across all files)
 
-Full automation is possible using **Zerodha Kite Connect API** (Rs 2,000/month):
+```python
+GAP_THRESHOLD        = 0.0015   # 0.15% — gap up/down minimum
+GAP_LARGE_THRESHOLD  = 0.0050   # 0.50% — strong gap (matches training)
+VIX_RISING_THRESHOLD = 0.03     # 3%    — VIX rising (matches training)
+STOP_LOSS_PCT        = 0.40     # exit if premium falls 40%
+PROFIT_TARGET_PCT    = 0.40     # exit if premium rises 40%
+BASE_RATE            = 54.5     # 54.5% of sessions are DOWN (historical)
+LOT_SIZE             = 75       # NIFTY weekly lot size
+STRIKE_STEP          = 50       # NIFTY strike interval
+STRIKES_OTM          = 1        # 1-OTM
+```
 
-| Time | Action |
+---
+
+## Automation (Local PC)
+
+No cloud required. Use Windows Task Scheduler with 3 tasks:
+
+| Time | Task | Script arg |
+|---|---|---|
+| 8:45 AM | Pre-market signal + Telegram alert | `--phase premarket` |
+| 9:16 AM | Fetch NIFTY open, place trade | `--phase entry` |
+| 10:14 AM | Force-close any open position | `--phase exit` |
+
+**Monthly cost:**
+| Item | Cost |
 |---|---|
-| 8:45 AM | Script fetches global data, computes pre-market signal |
-| 9:15 AM | Script fetches NIFTY open via Kite historical (1-min candle) |
-| 9:15 AM | If signal fires: lookup option instrument token, place BUY order |
-| 9:15 AM | On fill: place GTT two-leg order (SL trigger + TP limit) |
-| 10:14 AM | Force-close any open NIFTY option position |
+| Kite Connect API | Rs 2,000/month |
+| PC electricity (extra) | ~Rs 150/month |
+| **Total** | **~Rs 2,150/month** |
 
-**One manual step remains:** Kite Connect access tokens expire at midnight. A login URL must be clicked each morning (~30 seconds). Full browser automation is possible but fragile and against Zerodha ToS.
+**One-time setup requirement:** Save your Zerodha TOTP secret key — use `pyotp` to generate daily tokens automatically, eliminating the manual login step.
+
+**Windows settings:** Disable sleep, set active hours 7 AM–11 AM to prevent Windows Update reboots during trading.
 
 ---
 
 ## File Structure
 
 ```
-03_Market_Research/
-├── run_everyday.ipynb              ← daily use, run this every morning
-├── SUMMARY.md                      ← this file
+market-research/
+├── run_everyday.ipynb              <- run every morning before 9:15 AM
+├── analyse_today.ipynb             <- run after 3:30 PM to review the day
+├── SUMMARY.md                      <- this file
 │
 ├── v1/
-│   ├── v1_india_global.ipynb       ← baseline analysis
+│   ├── v1_india_global.ipynb       <- baseline analysis
 │   └── v1_aligned_dataset.csv
 │
 ├── v2/
-│   ├── v2_india_global.ipynb       ← full combination analysis
-│   ├── v2_aligned_dataset.csv      ← 740 sessions × 45 features
-│   ├── v2_reliable_signals.csv     ← 69 statistically significant combos
-│   └── kite_minute_cache/          ← NIFTY minute data (.pkl files)
+│   ├── v2_india_global.ipynb       <- full combination analysis
+│   ├── v2_aligned_dataset.csv      <- 740 sessions x 45 features
+│   ├── v2_reliable_signals.csv     <- 69 statistically significant combos
+│   └── kite_minute_cache/          <- NIFTY minute data (.pkl files)
+│
+├── v3/
+│   ├── v3_analysis.py              <- adds China/HangSeng/Oil/DXY signals
+│   ├── v3_aligned_dataset.csv      <- 740 sessions + 4 new columns
+│   ├── v3_new_signals.csv          <- 124 new reliable combos
+│   └── v3_backtest_compare.py      <- V2 vs V3 P&L comparison
 │
 └── backtesting/
-    ├── backtest_options.ipynb      ← interactive backtest notebook
-    ├── py_backtest.py              ← backtest module (used by grid search)
-    ├── grid_search.py              ← 49-combination SL/TP grid search
-    ├── backtest_trade_log.csv      ← 162 trades with full details
+    ├── backtest_options.ipynb      <- interactive backtest notebook
+    ├── py_backtest.py              <- backtest module (used by grid search)
+    ├── grid_search.py              <- 49-combination SL/TP grid search
+    ├── backtest_trade_log.csv      <- 162 trades with full details
     └── grid_search_results/
-        ├── grid_search_full.csv    ← all 49 combinations
-        ├── grid_top10.csv          ← top 10 by total P&L
+        ├── grid_search_full.csv    <- all 49 combinations
+        ├── grid_top10.csv          <- top 10 by total P&L
         └── grid_search_heatmaps.png
 ```
 
@@ -311,7 +374,7 @@ Full automation is possible using **Zerodha Kite Connect API** (Rs 2,000/month):
 
 | Phase | Duration | Action |
 |---|---|---|
-| Paper trade | 1 month | Follow every signal, record what you would have done |
+| Paper trade | 1 month | Run `analyse_today.ipynb` daily, record what would have happened |
 | Live 1 lot | 3 months | Trade real money, 1 lot only |
 | Validate | After 3 months | Check if win rate is within 5% of backtested 64% |
 | Scale | Month 4+ | Move to 2–3 lots if validation passes |
