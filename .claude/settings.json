@@ -1,0 +1,34 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python -c \":*)",
+      "Bash(conda run -n environment1 python -c \":*)",
+      "Bash(c:/Users/sayan/miniconda3/envs/environment1/python.exe -c \":*)",
+      "Bash(c:/Users/sayan/miniconda3/envs/environment1/python.exe:*)",
+      "Bash(mkdir -p v1 v2/cache)",
+      "Bash(cp -r kite_minute_cache v2/)",
+      "Bash(cp global_daily_2023-03-28_2026-04-01.pkl v2/cache/)",
+      "Bash(cp global_india_correlation.ipynb aligned_dataset.csv correlation_summary.csv conditional_stats.csv pairs_summary.csv 01_correlation_bars.png 02_full_heatmap.png 03_gap_analysis.png 04_pairs_heatmap.png 05_composite_analysis.png kite_access_token.txt v1/)",
+      "Bash(del \"c:/Users/sayan/OneDrive/Desktop/Projects/03_Market_Research/v2/sig_analysis.py\")",
+      "Bash(python3 -c \":*)",
+      "Bash(py -3 -c \":*)",
+      "Bash(where python:*)",
+      "Bash(where python3:*)",
+      "Bash(where py:*)",
+      "Bash(py --version)",
+      "Bash(\"C:/Users/sayan/miniconda3/envs/sushree/python.exe\" -c \":*)",
+      "Bash(\"C:/Users/sayan/miniconda3/envs/sushree/python.exe\" -c \"import sys; print\\(sys.executable\\); import importlib.util; print\\(importlib.util.find_spec\\(''pandas''\\)\\)\")",
+      "Bash(conda run:*)",
+      "Read(//c/Users/sayan/miniconda3/**)",
+      "Read(//c/Users/sayan/miniconda3/envs/**)",
+      "Bash(\"c:/Users/sayan/miniconda3/python.exe\" -c \":*)",
+      "Bash(\"c:/Users/sayan/miniconda3/envs/ee/python.exe\" -c \":*)",
+      "Bash(python3:*)",
+      "Bash(sed 's/\"\"\"\"//g')"
+    ],
+    "additionalDirectories": [
+      "c:\\Users\\sayan\\OneDrive\\Desktop\\Projects\\03_Market_Research\\v2",
+      "c:\\Users\\sayan\\OneDrive\\Desktop\\Projects\\03_Market_Research\\backtesting\\grid_search_results"
+    ]
+  }
+}
