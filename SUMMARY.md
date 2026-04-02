@@ -239,13 +239,13 @@ Four critical bugs identified and fixed before final results:
 **Phase 1 — Pre-market (before 9:15 AM):** Run Cells 1→2→3→4
 - Fetches global data automatically (yfinance)
 - Computes all non-gap signals
-- Checks top-3 bearish + top-3 bullish combos (gap combos excluded pre-market)
+- Checks top-3 bearish + top-3 bullish combos (gap combos excluded pre-market); respects `SIGNAL_MODE`
 - Outputs: BEARISH / BULLISH / NEUTRAL / CONFLICT
 
 **Phase 2 — Post-open (at/after 9:15 AM):** Run Cells 5→6
 - Enter actual NIFTY open price in Cell 5
 - Computes gap, re-checks all 6 combos including gap-based ones
-- Outputs: final signal + exact strike to buy + SL/TP levels
+- Outputs: final signal + exact strike to buy (with expiry date) + SL/TP levels + DTE + applicable lot cap
 
 **Error handling added:**
 - Weekend/holiday guard — exits cleanly if market is closed
@@ -261,10 +261,11 @@ Four critical bugs identified and fixed before final results:
 
 **What it does:**
 1. Fetches all global overnight data + today's NIFTY 1-min intraday data + India VIX
-2. Computes all signals (gap now known)
+2. Computes all signals (gap now known); respects `SIGNAL_MODE` (suppresses bullish if `BEARISH_ONLY`)
 3. Determines which combo fired (if any)
 4. Runs full BS simulation minute-by-minute on actual today's prices
-5. Reports: entry price, exit price, exit reason (SL/TP/10:15), P&L in Rs, whether prediction was correct
+5. Applies DTE-based lot caps (max 10 lots on expiry day DTE=0, max 20 lots otherwise)
+6. Reports: entry price, exit price, exit reason (SL/TP/10:15), lot count, P&L in Rs, whether prediction was correct
 
 **Output example:**
 ```
@@ -272,7 +273,9 @@ SIGNAL: BEARISH  (Gap Up + Prev India DOWN + US UP + SGX UP)
 RESULT: PROFIT  (Target hit at 09:43)
   Entry : 87.0 pts  (Rs 6,525 per lot)
   Exit  : 121.8 pts  at 09:43
-  P&L   : Rs +2,527  (1 lot, after brokerage)
+  Lots used   : 5  (cost/lot Rs 6,525)
+  P&L (pts)   : +34.8 pts  per lot
+  P&L (Rs)    : Rs +12,635  (5 lots, after brokerage)
   Predicted: DOWN  |  Actual: DOWN  |  Correct: YES
 ```
 
@@ -290,6 +293,9 @@ BASE_RATE            = 54.5     # 54.5% of sessions are DOWN (historical)
 LOT_SIZE             = 75       # NIFTY weekly lot size
 STRIKE_STEP          = 50       # NIFTY strike interval
 STRIKES_OTM          = 1        # 1-OTM
+SIGNAL_MODE          = "BEARISH_ONLY"  # "ALL" | "BEARISH_ONLY" | "BULLISH_ONLY"
+DTE0_MAX_LOTS        = 10       # max lots on expiry day (DTE=0); BS unreliable + wide spreads
+MAX_LOTS             = 20       # hard global cap on any single trade
 ```
 
 ---
