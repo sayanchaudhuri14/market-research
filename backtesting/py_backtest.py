@@ -21,17 +21,17 @@ STRIKE_STEP        = 50
 STRIKES_OTM        = 1
 RISK_FREE_RATE     = 0.065
 BROKERAGE          = 80
-BACKTEST_DAYS      = 252 * 1
+BACKTEST_DAYS      = 252 * 3
 BASE_RATE          = 54.5
 
-DTE0_MAX_LOTS      = 10    # cap lots on expiry day (DTE=0); BS unreliable + huge spreads
+DTE0_MAX_LOTS      = 20    # cap lots on expiry day (DTE=0); BS unreliable + huge spreads
 MAX_LOTS           = 20    # hard global cap on any single trade regardless of DTE
 
 # ── SIGNAL MODE ────────────────────────────────────────────────────────────────
 # Options: "ALL"  →  trade both bearish and bullish signals (original behaviour)
 #          "BULLISH_ONLY"  →  skip all bearish signals, only trade bullish
 #          "BEARISH_ONLY"  →  skip all bullish signals, only trade bearish
-SIGNAL_MODE = "BEARISH_ONLY"
+SIGNAL_MODE = "BULLISH"
 
 # ──────────────────────────────────────────────────────────────────────────────
 
@@ -191,9 +191,14 @@ def bs_price(S, K, T, r, sigma, opt_type="CE"):
         return float(S * _norm.cdf(d1) - K * np.exp(-r * T) * _norm.cdf(d2))
     return float(K * np.exp(-r * T) * _norm.cdf(-d2) - S * _norm.cdf(-d1))
 
-def nearest_thursday(d):
-    """Current-or-next Thursday. If d is Thursday, returns same day (DTE=0)."""
-    days = (3 - d.weekday()) % 7
+def nearest_tuesday(d):
+    """Current-or-next Tuesday (NSE Nifty expiry from Sep 2, 2025).
+    If d is already Tuesday, returns same day (DTE=0).
+    If Tuesday is a holiday, the caller should handle holiday-adjustment
+    externally (backtest uses historical data so actual traded dates are
+    already non-holidays; live notebook handles it separately).
+    """
+    days = (1 - d.weekday()) % 7   # Monday=0, Tuesday=1 → 0 if already Tue
     return d + timedelta(days=days)
 
 def simulate_trade(trade_date, action, nifty_open, vix_india, minute_df):
@@ -204,7 +209,7 @@ def simulate_trade(trade_date, action, nifty_open, vix_india, minute_df):
     if isinstance(trade_date, pd.Timestamp):
         trade_date = trade_date.date()
 
-    expiry = nearest_thursday(trade_date)
+    expiry = nearest_tuesday(trade_date)
     dte = (expiry - trade_date).days
 
     atm = round(nifty_open / STRIKE_STEP) * STRIKE_STEP
