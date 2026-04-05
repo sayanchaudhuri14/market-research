@@ -1,3 +1,15 @@
+# Project-specific ignores
+backtesting_2024_options/2024/
+backtesting_2024_options/backtest_outputs/*.pkl
+backtesting_true_data/bhav_cache/
+backtesting_true_data/option_minute_cache/
+backtesting_true_data/instruments_nfo.pkl
+backtesting_true_data_v2/bhav_cache/
+backtesting_true_data_v2/option_minute_cache/
+backtesting_true_data_v2/instruments_nfo.pkl
+v2/kite_minute_cache/
+v2/cache/access_token.txt
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]
