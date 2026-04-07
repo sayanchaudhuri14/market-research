@@ -1,4 +1,6 @@
 # Project-specific ignores
+overnight_drift_Strategy/data/ohlc_cache/
+overnight_drift_Strategy/data/access_token_cache.json
 backtesting_2024_options/2024/
 backtesting_2024_options/backtest_outputs/*.pkl
 backtesting_true_data/bhav_cache/
