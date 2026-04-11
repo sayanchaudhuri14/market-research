@@ -1,0 +1,8 @@
+state.json
+positions.json
+exit.lock
+logs/trade_log.jsonl
+logs/cron.log
+logs/exit.log
+__pycache__/
+*.pyc
