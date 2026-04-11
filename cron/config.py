@@ -6,7 +6,7 @@ from pathlib import Path
 from datetime import date
 
 CRON_DIR       = Path(__file__).parent
-SIGNALS_CSV    = CRON_DIR.parent / 'v2' / 'v2_reliable_signals.csv'
+SIGNALS_CSV    = CRON_DIR / 'v2_reliable_signals.csv'
 STATE_FILE     = CRON_DIR / 'state.json'
 POSITIONS_FILE = CRON_DIR / 'positions.json'
 LOG_FILE       = CRON_DIR / 'logs' / 'trade_log.jsonl'

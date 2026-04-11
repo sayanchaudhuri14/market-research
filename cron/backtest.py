@@ -4,7 +4,7 @@ backtest.py — Gap trading strategy backtest using REAL 2024 NSE options 1-min 
 
 Uses IDENTICAL assumptions to cron_gap_trading/config.py:
   - Same signal combos (top-10 bearish from v2_reliable_signals.csv)
-  - Same SL=15% / TP=40% / entry 9:25 / exit 11:15
+  - SL/TP/entry/exit taken from config.py
   - Same charge model (brokerage + STT + stamp + exchange + SEBI + GST)
   - Same lot sizing (BASE_LOTS=5, DTE0_MAX_LOTS=10, MAX_LOTS=25)
   - Same skip days (Mondays, NSE holidays, event days)
@@ -28,6 +28,7 @@ import sys
 import warnings
 from datetime import date, timedelta
 from pathlib import Path
+from typing import Optional, List, Tuple, Dict
 
 import numpy as np
 import pandas as pd
@@ -47,8 +48,8 @@ from config import (
     NSE_HOLIDAYS, EVENT_DAYS,
 )
 
-ROOT_DIR  = CRON_DIR.parent
-DATA_DIR  = ROOT_DIR / 'backtesting_2024_options' / '2024'
+ROOT_DIR  = CRON_DIR
+DATA_DIR  = CRON_DIR.parent / 'backtesting_2024_options' / '2024'
 NIFTY_DIR = DATA_DIR / '2024Nifty'
 OUT_DIR   = CRON_DIR / 'backtest_results'
 OUT_DIR.mkdir(parents=True, exist_ok=True)
@@ -69,7 +70,7 @@ def dmy(d: date) -> str:
     return f"{d.day:02d}{MONTH_ABBR[d.month-1]}{str(d.year)[2:]}"
 
 
-def load_expiry_schedule() -> list[date]:
+def load_expiry_schedule() -> List[date]:
     """Load list of expiry dates from expiry.csv."""
     path = DATA_DIR / 'expiry.csv'
     df   = pd.read_csv(path)
@@ -87,7 +88,7 @@ def load_expiry_schedule() -> list[date]:
     return sorted(expiries)
 
 
-def nearest_expiry(trade_date: date, expiries: list[date]) -> date | None:
+def nearest_expiry(trade_date: date, expiries: List[date]) -> Optional[date]:
     """Return the nearest expiry >= trade_date."""
     for exp in expiries:
         if exp >= trade_date:
@@ -117,7 +118,7 @@ def load_nifty_spot() -> pd.DataFrame:
     return spot
 
 
-def load_option_file(trade_date: date, expiry: date) -> pd.DataFrame | None:
+def load_option_file(trade_date: date, expiry: date) -> Optional[pd.DataFrame]:
     """Load 1-min option CSV for a given trade date and expiry."""
     mon_str  = MONTH_ABBR[trade_date.month - 1]
     folder   = DATA_DIR / f'2024{mon_str}'
@@ -136,12 +137,12 @@ def load_option_file(trade_date: date, expiry: date) -> pd.DataFrame | None:
 
 def load_signal_dataset() -> pd.DataFrame:
     """Load v2_aligned_dataset.csv and parse dates."""
-    df = pd.read_csv(ROOT_DIR / 'v2' / 'v2_aligned_dataset.csv')
+    df = pd.read_csv(CRON_DIR / 'v2_aligned_dataset.csv')
     df['india_date'] = pd.to_datetime(df['india_date']).dt.date
     return df.set_index('india_date')
 
 
-def load_signal_combos() -> tuple[list[str], pd.DataFrame]:
+def load_signal_combos() -> Tuple[List[str], pd.DataFrame]:
     """Load top-10 bearish combos from v2_reliable_signals.csv."""
     reliable = pd.read_csv(SIGNALS_CSV)
     top_bear = (reliable[reliable['P_Down'] > BASE_RATE]
@@ -185,7 +186,7 @@ def row_to_signals(row: pd.Series) -> dict:
     }
 
 
-def first_fired_combo(signals: dict, combos: list[str]) -> str | None:
+def first_fired_combo(signals: dict, combos: List[str]) -> Optional[str]:
     """Return first combo that fires (all constituent signals True), else None."""
     for combo in combos:
         if all(signals.get(s.strip(), False) for s in combo.split('+')):
@@ -197,7 +198,7 @@ def first_fired_combo(signals: dict, combos: list[str]) -> str | None:
 # TRADE SIMULATION
 # ══════════════════════════════════════════════════════════════════════════════
 
-def get_nifty_price_at(spot: pd.DataFrame, trade_date: date, time_str: str) -> float | None:
+def get_nifty_price_at(spot: pd.DataFrame, trade_date: date, time_str: str) -> Optional[float]:
     """Get NIFTY spot price at a specific time on a given date."""
     rows = spot[(spot['date'] == trade_date) & (spot['time'] == time_str)]
     if rows.empty:
@@ -212,7 +213,7 @@ def get_nifty_price_at(spot: pd.DataFrame, trade_date: date, time_str: str) -> f
 
 def simulate_trade(opt_df: pd.DataFrame, strike: int, opt_type: str,
                    entry_time: str, exit_time: str,
-                   sl_pct: float, tp_pct: float) -> dict | None:
+                   sl_pct: float, tp_pct: float) -> Optional[dict]:
     """
     Simulate a single option trade on real 1-min data.
     Uses HIGH to check TP hit, LOW to check SL hit (per-candle).
@@ -345,7 +346,7 @@ def compute_lots(capital: float, entry_premium: float, dte: int) -> int:
 # XIRR
 # ══════════════════════════════════════════════════════════════════════════════
 
-def xirr(cash_flows: list[tuple[float, date]]) -> float | None:
+def xirr(cash_flows: List[Tuple[float, date]]) -> Optional[float]:
     """Compute XIRR via binary search on NPV. cash_flows = [(amount, date), ...]."""
     if len(cash_flows) < 2:
         return None
@@ -378,7 +379,7 @@ def xirr(cash_flows: list[tuple[float, date]]) -> float | None:
 def run_backtest():
     print("=" * 70)
     print("  NIFTY Gap Strategy — Backtest on Real 2024 Options Data")
-    print("  Config: entry=09:25  exit=11:15  SL=15%  TP=40%  BEARISH_ONLY")
+    print(f"  Config: entry=09:25  exit=11:15  SL={SL_PCT:.0%}  TP={TP_PCT:.0%}  BEARISH_ONLY")
     print("=" * 70)
 
     # ── Load all data ──────────────────────────────────────────────────────────

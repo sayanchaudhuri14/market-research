@@ -6,7 +6,7 @@ Runs at 9:27 AM IST Tue–Fri (2 min after entry.py) via cron.
 What it does:
   1. Reads positions.json written by entry.py
   2. Polls NSE option chain every 2 minutes for current premium
-  3. Exits early if SL (-15%) or TP (+40%) is hit
+  3. Exits early if SL or TP is hit (thresholds from config.py)
   4. Hard exits at 11:15 AM if SL/TP not triggered
   5. Computes full P&L with all charges (sell side + entry charges)
   6. Updates state.json (compounding capital), clears positions.json
@@ -25,6 +25,7 @@ import sys
 import tempfile
 import time
 import traceback
+from typing import Optional
 
 import pytz
 import requests
@@ -96,7 +97,7 @@ def get_nse_session() -> requests.Session:
     return session
 
 def fetch_current_premium(session: requests.Session,
-                          strike: int, expiry_str: str, opt_type: str) -> float | None:
+                          strike: int, expiry_str: str, opt_type: str) -> Optional[float]:
     """Fetch current LTP for the position's option from NSE."""
     url = 'https://www.nseindia.com/api/option-chain-indices?symbol=NIFTY'
     try:

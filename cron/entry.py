@@ -24,6 +24,7 @@ import sys
 import tempfile
 import traceback
 import time
+from typing import Optional
 
 import pandas as pd
 import pytz
@@ -37,6 +38,7 @@ from config import (
     SIGNAL_MODE, BASE_RATE,
     GAP_THRESHOLD, GAP_LARGE_THRESHOLD, VIX_RISING_THRESHOLD, VIX_SPIKE_THRESHOLD,
     MAX_STALE_DAYS,
+    SL_PCT, TP_PCT,
     LOT_SIZE, STRIKE_STEP, BASE_LOTS, DTE0_MAX_LOTS, MAX_LOTS,
     EXPIRY_CHANGE_DATE,
     BROKERAGE_PER_ORDER, STAMP_BUY_RATE, EXCHANGE_RATE, SEBI_RATE, GST_RATE,
@@ -151,7 +153,7 @@ def fetch_global_data(today: datetime.date) -> dict:
 
 # ── NIFTY intraday prices ──────────────────────────────────────────────────────
 
-def fetch_nifty_915_open() -> float | None:
+def fetch_nifty_915_open() -> Optional[float]:
     """Get NIFTY 9:15 AM opening price via yfinance 1-min data."""
     try:
         raw = yf.download('^NSEI', period='1d', interval='1m', progress=False, auto_adjust=True)
@@ -193,7 +195,7 @@ def get_nse_session() -> requests.Session:
     time.sleep(1)
     return session
 
-def fetch_option_chain(session: requests.Session) -> dict | None:
+def fetch_option_chain(session: requests.Session) -> Optional[dict]:
     """Fetch NIFTY option chain from NSE. Returns raw JSON data or None."""
     url = 'https://www.nseindia.com/api/option-chain-indices?symbol=NIFTY'
     try:
@@ -204,7 +206,7 @@ def fetch_option_chain(session: requests.Session) -> dict | None:
         print(f"  [warn] NSE option chain fetch failed: {e}")
         return None
 
-def get_nifty_spot(chain_data: dict) -> float | None:
+def get_nifty_spot(chain_data: dict) -> Optional[float]:
     """Extract current NIFTY underlying value from option chain."""
     try:
         return float(chain_data['records']['underlyingValue'])
@@ -212,7 +214,7 @@ def get_nifty_spot(chain_data: dict) -> float | None:
         return None
 
 def get_option_premium(chain_data: dict, strike: int, expiry_str: str,
-                       opt_type: str) -> float | None:
+                       opt_type: str) -> Optional[float]:
     """
     Extract LTP for a specific strike/expiry/type from option chain.
     opt_type: 'CE' or 'PE'
@@ -251,7 +253,7 @@ def expiry_to_nse_str(expiry: datetime.date) -> str:
 
 # ── Signal computation ─────────────────────────────────────────────────────────
 
-def compute_signals(gd: dict, nifty_open_915: float | None) -> dict:
+def compute_signals(gd: dict, nifty_open_915: Optional[float]) -> dict:
     """
     Build the full signals dict. Gap signals require nifty_open_915.
     If nifty_open_915 is None, gap signals default to False.
@@ -472,8 +474,8 @@ def main():
         "lots":          lots,
         "buy_value":     round(buy_val, 2),
         "charges_entry": round(charges, 4),
-        "sl_price":      round(entry_premium * (1 - 0.15), 4),
-        "tp_price":      round(entry_premium * (1 + 0.40), 4),
+        "sl_price":      round(entry_premium * (1 - SL_PCT), 4),
+        "tp_price":      round(entry_premium * (1 + TP_PCT), 4),
         "signals":       {k: v for k, v in signals.items() if v},
         "status":        "open",
     }
@@ -497,8 +499,8 @@ def main():
         "capital_before": round(capital, 2),
     })
 
-    print(f"\n  ✓ Position written. exit.py will monitor SL={entry_premium*(1-0.15):.2f}"
-          f" / TP={entry_premium*(1+0.40):.2f} until 11:15 AM.")
+    print(f"\n  ✓ Position written. exit.py will monitor SL={entry_premium*(1-SL_PCT):.2f}"
+          f" / TP={entry_premium*(1+TP_PCT):.2f} until 11:15 AM.")
 
 
 if __name__ == '__main__':

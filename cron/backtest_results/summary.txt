@@ -1,0 +1,43 @@
+NIFTY Gap Strategy — Backtest Summary (Real 2024 Options Data)
+============================================================
+Period          : 2024-01-01 to 2024-12-31
+Config          : entry=09:25  exit=11:15  SL=15%  TP=40%
+Mode            : BEARISH_ONLY  (top-10 bearish combos)
+
+DAYS
+  Total 2024 days  : 246
+  Skipped          : 49
+  No signal        : 134
+  Traded           : 62
+  Signal rate      : 31.5% of eligible days
+
+PERFORMANCE
+  Win rate         : 35.5%  (22/62)
+  Take Profit hits : 20  (32.3%)
+  Stop Loss hits   : 38  (61.3%)
+  Hard exits       : 4  (6.5%)
+  Starting capital : Rs 200,000.00
+  Final capital    : Rs 415,520.02
+  Total refilled   : Rs 0.00  (0 refills)
+  Net return       : +107.76%
+  CAGR             : +107.86%
+  XIRR             : 119.9%
+  Max drawdown     : 31.7%
+
+P&L (per trade averages)
+  Avg gross P&L    : Rs +3,781.00
+  Avg charges      : Rs 304.87
+  Avg net P&L      : Rs +3,476.13
+  Total charges    : Rs 18,902.23
+
+CHARGE BREAKDOWN (avg per trade)
+  Brokerage : Rs 40.00
+  STT sell  : Rs 85.21
+  Stamp buy : Rs 3.9767
+  Exchange  : Rs 142.52
+  SEBI      : Rs 0.2689
+  GST       : Rs 32.90
+
+OUTPUTS
+  trades.csv   : 62 rows
+  daily_log.csv: 246 rows
