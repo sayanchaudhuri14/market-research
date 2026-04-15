@@ -188,23 +188,35 @@ NSE_HEADERS = {
 }
 
 def get_nse_session() -> requests.Session:
+    """Warm up NSE session cookies: homepage → option-chain page → ready."""
     session = requests.Session()
     session.headers.update(NSE_HEADERS)
-    # Warm up cookies
     session.get('https://www.nseindia.com', timeout=15)
+    time.sleep(1)
+    session.get('https://www.nseindia.com/option-chain', timeout=15)
     time.sleep(1)
     return session
 
 def fetch_option_chain(session: requests.Session) -> Optional[dict]:
-    """Fetch NIFTY option chain from NSE. Returns raw JSON data or None."""
+    """Fetch NIFTY option chain from NSE. Retries up to 3 times on failure."""
     url = 'https://www.nseindia.com/api/option-chain-indices?symbol=NIFTY'
-    try:
-        resp = session.get(url, timeout=15)
-        resp.raise_for_status()
-        return resp.json()
-    except Exception as e:
-        print(f"  [warn] NSE option chain fetch failed: {e}")
-        return None
+    for attempt in range(1, 4):
+        try:
+            resp = session.get(url, timeout=15)
+            resp.raise_for_status()
+            data = resp.json()
+            # Validate structure before returning
+            if data.get('records', {}).get('underlyingValue'):
+                return data
+            print(f"  [warn] attempt {attempt}: underlyingValue missing in response — retrying")
+            session = get_nse_session()
+            time.sleep(2)
+        except Exception as e:
+            print(f"  [warn] attempt {attempt}: NSE fetch failed: {e}")
+            if attempt < 3:
+                session = get_nse_session()
+                time.sleep(2)
+    return None
 
 def get_nifty_spot(chain_data: dict) -> Optional[float]:
     """Extract current NIFTY underlying value from option chain."""
@@ -408,17 +420,18 @@ def main():
 
     # 6. Fetch live NIFTY spot + option chain from NSE
     print("\nFetching NSE option chain ...", end=' ', flush=True)
-    session   = get_nse_session()
-    chain     = fetch_option_chain(session)
+    chain = fetch_option_chain(get_nse_session())
     if chain is None:
-        append_log("ERROR", {"error": "NSE option chain unavailable at entry time"})
-        print("FAILED — NSE option chain unavailable.")
+        append_log("ERROR", {"error": "NSE option chain unavailable after 3 attempts"})
+        print("FAILED — NSE option chain unavailable after 3 attempts.")
         sys.exit(1)
     print("done.")
 
     nifty_spot_925 = get_nifty_spot(chain)
     if not nifty_spot_925:
-        append_log("ERROR", {"error": "Could not extract NIFTY spot from option chain"})
+        keys = list(chain.get('records', {}).keys())
+        append_log("ERROR", {"error": "Could not extract NIFTY spot", "records_keys": keys})
+        print(f"ERROR — underlyingValue missing. records keys: {keys}")
         sys.exit(1)
     print(f"  NIFTY spot (9:25) : {nifty_spot_925:,.1f}")
 

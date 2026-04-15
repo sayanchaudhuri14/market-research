@@ -90,9 +90,12 @@ def load_state() -> dict:
 # ── NSE option chain ───────────────────────────────────────────────────────────
 
 def get_nse_session() -> requests.Session:
+    """Warm up NSE session cookies: homepage → option-chain page → ready."""
     session = requests.Session()
     session.headers.update(NSE_HEADERS)
     session.get('https://www.nseindia.com', timeout=15)
+    time.sleep(1)
+    session.get('https://www.nseindia.com/option-chain', timeout=15)
     time.sleep(1)
     return session
 
