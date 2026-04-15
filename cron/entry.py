@@ -23,15 +23,15 @@ import os
 import sys
 import tempfile
 import traceback
-import time
 from typing import Optional
 
 import pandas as pd
 import pytz
-import requests
 import yfinance as yf
 
 sys.path.insert(0, os.path.dirname(__file__))
+from kite_auth import get_kite
+import kite_data
 from config import (
     STARTING_CAPITAL, REFILL_THRESHOLD,
     SIGNALS_CSV, STATE_FILE, POSITIONS_FILE, LOG_FILE,
@@ -151,125 +151,9 @@ def fetch_global_data(today: datetime.date) -> dict:
     }
 
 
-# ── NIFTY intraday prices ──────────────────────────────────────────────────────
-
-def fetch_nifty_915_open() -> Optional[float]:
-    """Get NIFTY 9:15 AM opening price via yfinance 1-min data."""
-    try:
-        raw = yf.download('^NSEI', period='1d', interval='1m', progress=False, auto_adjust=True)
-        if raw.empty:
-            return None
-        if isinstance(raw.columns, pd.MultiIndex):
-            raw.columns = raw.columns.get_level_values(0)
-        if raw.index.tz is None:
-            raw.index = raw.index.tz_localize('UTC')
-        raw.index = raw.index.tz_convert(IST)
-        # Get 9:15 AM bar
-        bar = raw[raw.index.time == datetime.time(9, 15)]
-        if bar.empty:
-            bar = raw.iloc[[0]]  # fallback: first available bar
-        return float(bar['Open'].iloc[0])
-    except Exception as e:
-        print(f"  [warn] NIFTY 9:15 fetch failed: {e}")
-        return None
-
-
-# ── NSE option chain API ───────────────────────────────────────────────────────
-# NSE uses Akamai bot protection. EC2/AWS IPs get 403 on homepage but the
-# option-chain page usually passes. Key: use Windows UA, sec-* headers, and
-# set Referer to option-chain page when calling the API endpoint.
-
-NSE_BASE_HEADERS = {
-    'User-Agent': (
-        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
-        '(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36'
-    ),
-    'Accept-Language': 'en-US,en;q=0.9',
-    'Accept-Encoding': 'gzip, deflate, br',
-    'Connection': 'keep-alive',
-    'sec-ch-ua': '"Chromium";v="124", "Google Chrome";v="124", "Not-A.Brand";v="99"',
-    'sec-ch-ua-mobile': '?0',
-    'sec-ch-ua-platform': '"Windows"',
-}
-
-def get_nse_session() -> requests.Session:
-    """
-    Warm up NSE session to get valid Akamai cookies.
-    Sequence: option-chain page (sets _abck, bm_sz, nsit) → market-status API
-    (lighter endpoint) → ready for option-chain API.
-    Homepage often 403 on EC2 IPs — skip it.
-    """
-    session = requests.Session()
-    session.headers.update(NSE_BASE_HEADERS)
-    # Hit option-chain page with browser-like Accept header
-    session.headers['Accept'] = 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'
-    session.headers['sec-fetch-dest'] = 'document'
-    session.headers['sec-fetch-mode'] = 'navigate'
-    session.headers['sec-fetch-site'] = 'none'
-    try:
-        session.get('https://www.nseindia.com/option-chain', timeout=15)
-    except Exception:
-        pass
-    time.sleep(2)
-    # Switch to XHR-style headers for API calls
-    session.headers['Accept'] = 'application/json, text/plain, */*'
-    session.headers['Referer'] = 'https://www.nseindia.com/option-chain'
-    session.headers['sec-fetch-dest'] = 'empty'
-    session.headers['sec-fetch-mode'] = 'cors'
-    session.headers['sec-fetch-site'] = 'same-origin'
-    # Hit a lightweight API endpoint to warm up the session further
-    try:
-        session.get('https://www.nseindia.com/api/marketStatus', timeout=15)
-    except Exception:
-        pass
-    time.sleep(1)
-    return session
-
-def fetch_option_chain(session: requests.Session) -> Optional[dict]:
-    """Fetch NIFTY option chain from NSE. Retries up to 3 times on failure."""
-    url = 'https://www.nseindia.com/api/option-chain-indices?symbol=NIFTY'
-    for attempt in range(1, 4):
-        try:
-            resp = session.get(url, timeout=15)
-            resp.raise_for_status()
-            data = resp.json()
-            if data.get('records', {}).get('underlyingValue'):
-                return data
-            print(f"  [warn] attempt {attempt}: empty/incomplete response — retrying with fresh session")
-            session = get_nse_session()
-            time.sleep(3)
-        except Exception as e:
-            print(f"  [warn] attempt {attempt}: NSE fetch failed: {e}")
-            if attempt < 3:
-                session = get_nse_session()
-                time.sleep(3)
-    return None
-
-def get_nifty_spot(chain_data: dict) -> Optional[float]:
-    """Extract current NIFTY underlying value from option chain."""
-    try:
-        return float(chain_data['records']['underlyingValue'])
-    except Exception:
-        return None
-
-def get_option_premium(chain_data: dict, strike: int, expiry_str: str,
-                       opt_type: str) -> Optional[float]:
-    """
-    Extract LTP for a specific strike/expiry/type from option chain.
-    opt_type: 'CE' or 'PE'
-    expiry_str: NSE format e.g. '17-Apr-2025'
-    """
-    try:
-        for row in chain_data['records']['data']:
-            if (row.get('strikePrice') == strike
-                    and row.get('expiryDate', '').strip() == expiry_str):
-                opt_data = row.get(opt_type, {})
-                ltp = opt_data.get('lastPrice')
-                if ltp and ltp > 0:
-                    return float(ltp)
-        return None
-    except Exception:
-        return None
+# ── NIFTY intraday prices (via Kite) ──────────────────────────────────────────
+# fetch_nifty_915_open and option chain lookups are now in kite_data.py
+# These thin wrappers are kept so the rest of main() is unchanged.
 
 
 # ── Expiry calculation ─────────────────────────────────────────────────────────
@@ -407,9 +291,12 @@ def main():
                  ('DAX', gd['dax_ret']), ('VIX', gd['vix_ret'])]:
         print(f"  {k:<16}: {v:>+10.2%}" if v is not None else f"  {k:<16}:    MISSING")
 
-    # 3. Fetch NIFTY 9:15 AM open (for gap %)
+    # 3. Authenticate Kite Connect (cached token reused if already logged in today)
+    kite = get_kite()
+
+    # 3b. Fetch NIFTY 9:15 AM open via Kite historical data (for gap %)
     print("Fetching NIFTY 9:15 open ...", end=' ', flush=True)
-    nifty_open_915 = fetch_nifty_915_open()
+    nifty_open_915 = kite_data.get_nifty_915_open(kite)
     print(f"{nifty_open_915:,.1f}" if nifty_open_915 else "unavailable")
 
     # 4. Compute signals
@@ -445,21 +332,14 @@ def main():
     print(f"\n  BEARISH SIGNAL FIRED: {winning_combo}")
     print(f"  P(DOWN)={row['P_Down']:.1f}%  Edge=+{row['Edge_pp']:.1f}%  N={int(row['N'])}")
 
-    # 6. Fetch live NIFTY spot + option chain from NSE
-    print("\nFetching NSE option chain ...", end=' ', flush=True)
-    chain = fetch_option_chain(get_nse_session())
-    if chain is None:
-        append_log("ERROR", {"error": "NSE option chain unavailable after 3 attempts"})
-        print("FAILED — NSE option chain unavailable after 3 attempts.")
-        sys.exit(1)
-    print("done.")
-
-    nifty_spot_925 = get_nifty_spot(chain)
+    # 6. Fetch live NIFTY spot via Kite
+    print("\nFetching NIFTY spot price ...", end=' ', flush=True)
+    nifty_spot_925 = kite_data.get_nifty_spot(kite)
     if not nifty_spot_925:
-        keys = list(chain.get('records', {}).keys())
-        append_log("ERROR", {"error": "Could not extract NIFTY spot", "records_keys": keys})
-        print(f"ERROR — underlyingValue missing. records keys: {keys}")
+        append_log("ERROR", {"error": "Kite NIFTY spot unavailable"})
+        print("FAILED — Kite NIFTY spot unavailable.")
         sys.exit(1)
+    print(f"{nifty_spot_925:,.1f}")
     print(f"  NIFTY spot (9:25) : {nifty_spot_925:,.1f}")
 
     # 7. Compute expiry, strike
@@ -472,16 +352,16 @@ def main():
     print(f"  Expiry            : {expiry_str}  (DTE={dte})")
     print(f"  ATM               : {atm:,}  →  1-OTM PE strike: {strike_pe:,}")
 
-    # 8. Fetch entry premium
-    entry_premium = get_option_premium(chain, strike_pe, expiry_str, 'PE')
+    # 8. Fetch entry premium via Kite
+    entry_premium = kite_data.get_option_premium(kite, strike_pe, expiry, 'PE')
     if entry_premium is None:
         # Fallback: try ATM PE
-        entry_premium = get_option_premium(chain, atm, expiry_str, 'PE')
+        entry_premium = kite_data.get_option_premium(kite, atm, expiry, 'PE')
         if entry_premium:
             print(f"  [warn] 1-OTM PE not found — using ATM PE instead")
     if entry_premium is None:
-        append_log("ERROR", {"error": f"Could not fetch PE premium for strike {strike_pe} expiry {expiry_str}"})
-        print("ERROR — PE premium unavailable in option chain.")
+        append_log("ERROR", {"error": f"Could not fetch PE premium for strike {strike_pe} expiry {expiry}"})
+        print("ERROR — PE premium unavailable from Kite.")
         sys.exit(1)
     print(f"  Entry premium     : Rs {entry_premium:.2f}")
 

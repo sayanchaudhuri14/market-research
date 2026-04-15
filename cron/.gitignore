@@ -1,8 +1,18 @@
+# Credentials & tokens — never commit these
+.env
+kite_token.json
+
+# Runtime state
 state.json
 positions.json
 exit.lock
-logs/trade_log.jsonl
-logs/cron.log
-logs/exit.log
+
+# Daily caches (auto-regenerated)
+kite_nfo_instruments.json
+
+# Logs
+logs/
+
+# Python
 __pycache__/
 *.pyc
