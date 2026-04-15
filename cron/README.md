@@ -11,7 +11,7 @@ Runs Tue–Fri (skips Monday, NSE holidays, RBI MPC / Budget days).
 | File | Purpose |
 |------|---------|
 | `entry.py` | Runs at 9:25 AM — checks signals, fetches live data via Kite, writes `positions.json` |
-| `exit.py` | Runs after entry — polls SL/TP every 2 min, hard exits at 11:15 AM |
+| `exit.py` | Runs after entry — polls option LTP via Kite every 2 min, hard exits at 11:15 AM |
 | `config.py` | All strategy constants (capital, SL/TP %, lot size, holidays, etc.) |
 | `kite_auth.py` | Automated Kite Connect login (credentials + TOTP → access token, cached daily) |
 | `kite_data.py` | Kite API helpers: NIFTY spot, 9:15 open candle, option LTP |
@@ -73,6 +73,8 @@ sudo timedatectl set-timezone Asia/Kolkata
 3. Follow Kite Connect redirect manually, stop when `request_token` appears in `Location` header
 4. Exchange `request_token` for `access_token` via `kite.generate_session()`
 5. Cache `access_token` in `kite_token.json` — reused for the rest of the day
+
+Both `entry.py` and `exit.py` call `get_kite()` — if the token was already cached by `entry.py` at 9:25 AM, `exit.py` at 9:27 AM reuses it with no second login.
 
 ---
 

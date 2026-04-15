@@ -5,7 +5,7 @@ Runs at 9:27 AM IST Tue–Fri (2 min after entry.py) via cron.
 
 What it does:
   1. Reads positions.json written by entry.py
-  2. Polls NSE option chain every 2 minutes for current premium
+  2. Polls Kite Connect every 2 minutes for current option LTP
   3. Exits early if SL or TP is hit (thresholds from config.py)
   4. Hard exits at 11:15 AM if SL/TP not triggered
   5. Computes full P&L with all charges (sell side + entry charges)
@@ -28,9 +28,10 @@ import traceback
 from typing import Optional
 
 import pytz
-import requests
 
 sys.path.insert(0, os.path.dirname(__file__))
+from kite_auth import get_kite
+import kite_data
 from config import (
     STARTING_CAPITAL,
     STATE_FILE, POSITIONS_FILE, LOG_FILE, LOCK_FILE,
@@ -42,19 +43,6 @@ from config import (
 )
 
 IST = pytz.timezone('Asia/Kolkata')
-
-NSE_BASE_HEADERS = {
-    'User-Agent': (
-        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
-        '(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36'
-    ),
-    'Accept-Language': 'en-US,en;q=0.9',
-    'Accept-Encoding': 'gzip, deflate, br',
-    'Connection': 'keep-alive',
-    'sec-ch-ua': '"Chromium";v="124", "Google Chrome";v="124", "Not-A.Brand";v="99"',
-    'sec-ch-ua-mobile': '?0',
-    'sec-ch-ua-platform': '"Windows"',
-}
 
 
 # ── Utility ────────────────────────────────────────────────────────────────────
@@ -89,52 +77,18 @@ def load_state() -> dict:
     return {"capital": STARTING_CAPITAL, "cumulative_pnl": 0.0, "trade_count": 0}
 
 
-# ── NSE option chain ───────────────────────────────────────────────────────────
+# ── Kite option price ─────────────────────────────────────────────────────────
 
-def get_nse_session() -> requests.Session:
-    """Warm up NSE session cookies with browser-like headers to bypass Akamai."""
-    session = requests.Session()
-    session.headers.update(NSE_BASE_HEADERS)
-    session.headers['Accept'] = 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'
-    session.headers['sec-fetch-dest'] = 'document'
-    session.headers['sec-fetch-mode'] = 'navigate'
-    session.headers['sec-fetch-site'] = 'none'
-    try:
-        session.get('https://www.nseindia.com/option-chain', timeout=15)
-    except Exception:
-        pass
-    time.sleep(2)
-    session.headers['Accept'] = 'application/json, text/plain, */*'
-    session.headers['Referer'] = 'https://www.nseindia.com/option-chain'
-    session.headers['sec-fetch-dest'] = 'empty'
-    session.headers['sec-fetch-mode'] = 'cors'
-    session.headers['sec-fetch-site'] = 'same-origin'
-    try:
-        session.get('https://www.nseindia.com/api/marketStatus', timeout=15)
-    except Exception:
-        pass
-    time.sleep(1)
-    return session
+def parse_expiry(expiry_str: str) -> datetime.date:
+    """Convert NSE expiry string '21-Apr-2026' to a datetime.date."""
+    return datetime.datetime.strptime(expiry_str, "%d-%b-%Y").date()
 
-def fetch_current_premium(session: requests.Session,
-                          strike: int, expiry_str: str, opt_type: str) -> Optional[float]:
-    """Fetch current LTP for the position's option from NSE."""
-    url = 'https://www.nseindia.com/api/option-chain-indices?symbol=NIFTY'
-    try:
-        resp = session.get(url, timeout=15)
-        resp.raise_for_status()
-        data = resp.json()
-        for row in data['records']['data']:
-            if (row.get('strikePrice') == strike
-                    and row.get('expiryDate', '').strip() == expiry_str):
-                opt_data = row.get(opt_type, {})
-                ltp = opt_data.get('lastPrice')
-                if ltp is not None and ltp > 0:
-                    return float(ltp)
-        return None
-    except Exception as e:
-        print(f"  [warn] Premium fetch failed: {e}")
-        return None
+
+def fetch_current_premium(kite, strike: int, expiry_str: str,
+                          opt_type: str) -> Optional[float]:
+    """Fetch current LTP for the position's option via Kite."""
+    expiry = parse_expiry(expiry_str)
+    return kite_data.get_option_premium(kite, strike, expiry, opt_type)
 
 
 # ── Charge computation (sell side) ────────────────────────────────────────────
@@ -293,10 +247,8 @@ def _run():
           f" | Entry={entry_prem:.2f}  SL={sl_price:.2f}  TP={tp_price:.2f}"
           f" | Lots={lots}")
 
-    # 2. Init NSE session
-    print("Connecting to NSE ...", end=' ', flush=True)
-    session = get_nse_session()
-    print("done.")
+    # 2. Authenticate Kite (uses cached token if already logged in today)
+    kite = get_kite()
 
     hard_exit_time = now_ist().replace(
         hour=EXIT_HR, minute=EXIT_MIN, second=0, microsecond=0
@@ -308,7 +260,7 @@ def _run():
 
         # Hard exit check
         if current_time >= hard_exit_time:
-            prem = fetch_current_premium(session, strike, expiry_str, opt_type)
+            prem = fetch_current_premium(kite, strike, expiry_str, opt_type)
             if prem is None:
                 prem = entry_prem  # fallback: flat
                 print("  [warn] Could not fetch exit price — using entry price as fallback")
@@ -316,7 +268,7 @@ def _run():
             return
 
         # Fetch current premium
-        prem = fetch_current_premium(session, strike, expiry_str, opt_type)
+        prem = fetch_current_premium(kite, strike, expiry_str, opt_type)
         poll_count += 1
 
         if prem is not None:
@@ -334,13 +286,6 @@ def _run():
                 return
         else:
             print(f"  [{current_time.strftime('%H:%M:%S')}]  premium fetch failed — retrying next poll")
-
-            # Re-init session if repeated failures
-            if poll_count % 5 == 0:
-                try:
-                    session = get_nse_session()
-                except Exception:
-                    pass
 
         # Wait for next poll (but wake up 10s before hard exit)
         sleep_until = min(
