@@ -287,14 +287,7 @@ def _run():
         else:
             print(f"  [{current_time.strftime('%H:%M:%S')}]  premium fetch failed — retrying next poll")
 
-        # Wait for next poll (but wake up 10s before hard exit)
-        sleep_until = min(
-            current_time.timestamp() + POLL_INTERVAL_SEC,
-            hard_exit_time.timestamp() - 10,
-        )
-        sleep_secs = max(0, sleep_until - now_ist().timestamp())
-        if sleep_secs > 0:
-            time.sleep(sleep_secs)
+        time.sleep(POLL_INTERVAL_SEC)
 
 
 if __name__ == '__main__':
