@@ -43,15 +43,17 @@ from config import (
 
 IST = pytz.timezone('Asia/Kolkata')
 
-NSE_HEADERS = {
+NSE_BASE_HEADERS = {
     'User-Agent': (
-        'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 '
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
         '(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36'
     ),
-    'Accept': 'application/json, text/plain, */*',
     'Accept-Language': 'en-US,en;q=0.9',
-    'Referer': 'https://www.nseindia.com/',
+    'Accept-Encoding': 'gzip, deflate, br',
     'Connection': 'keep-alive',
+    'sec-ch-ua': '"Chromium";v="124", "Google Chrome";v="124", "Not-A.Brand";v="99"',
+    'sec-ch-ua-mobile': '?0',
+    'sec-ch-ua-platform': '"Windows"',
 }
 
 
@@ -90,12 +92,27 @@ def load_state() -> dict:
 # ── NSE option chain ───────────────────────────────────────────────────────────
 
 def get_nse_session() -> requests.Session:
-    """Warm up NSE session cookies: homepage → option-chain page → ready."""
+    """Warm up NSE session cookies with browser-like headers to bypass Akamai."""
     session = requests.Session()
-    session.headers.update(NSE_HEADERS)
-    session.get('https://www.nseindia.com', timeout=15)
-    time.sleep(1)
-    session.get('https://www.nseindia.com/option-chain', timeout=15)
+    session.headers.update(NSE_BASE_HEADERS)
+    session.headers['Accept'] = 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'
+    session.headers['sec-fetch-dest'] = 'document'
+    session.headers['sec-fetch-mode'] = 'navigate'
+    session.headers['sec-fetch-site'] = 'none'
+    try:
+        session.get('https://www.nseindia.com/option-chain', timeout=15)
+    except Exception:
+        pass
+    time.sleep(2)
+    session.headers['Accept'] = 'application/json, text/plain, */*'
+    session.headers['Referer'] = 'https://www.nseindia.com/option-chain'
+    session.headers['sec-fetch-dest'] = 'empty'
+    session.headers['sec-fetch-mode'] = 'cors'
+    session.headers['sec-fetch-site'] = 'same-origin'
+    try:
+        session.get('https://www.nseindia.com/api/marketStatus', timeout=15)
+    except Exception:
+        pass
     time.sleep(1)
     return session
 

@@ -175,25 +175,53 @@ def fetch_nifty_915_open() -> Optional[float]:
 
 
 # ── NSE option chain API ───────────────────────────────────────────────────────
+# NSE uses Akamai bot protection. EC2/AWS IPs get 403 on homepage but the
+# option-chain page usually passes. Key: use Windows UA, sec-* headers, and
+# set Referer to option-chain page when calling the API endpoint.
 
-NSE_HEADERS = {
+NSE_BASE_HEADERS = {
     'User-Agent': (
-        'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 '
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
         '(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36'
     ),
-    'Accept': 'application/json, text/plain, */*',
     'Accept-Language': 'en-US,en;q=0.9',
-    'Referer': 'https://www.nseindia.com/',
+    'Accept-Encoding': 'gzip, deflate, br',
     'Connection': 'keep-alive',
+    'sec-ch-ua': '"Chromium";v="124", "Google Chrome";v="124", "Not-A.Brand";v="99"',
+    'sec-ch-ua-mobile': '?0',
+    'sec-ch-ua-platform': '"Windows"',
 }
 
 def get_nse_session() -> requests.Session:
-    """Warm up NSE session cookies: homepage → option-chain page → ready."""
+    """
+    Warm up NSE session to get valid Akamai cookies.
+    Sequence: option-chain page (sets _abck, bm_sz, nsit) → market-status API
+    (lighter endpoint) → ready for option-chain API.
+    Homepage often 403 on EC2 IPs — skip it.
+    """
     session = requests.Session()
-    session.headers.update(NSE_HEADERS)
-    session.get('https://www.nseindia.com', timeout=15)
-    time.sleep(1)
-    session.get('https://www.nseindia.com/option-chain', timeout=15)
+    session.headers.update(NSE_BASE_HEADERS)
+    # Hit option-chain page with browser-like Accept header
+    session.headers['Accept'] = 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'
+    session.headers['sec-fetch-dest'] = 'document'
+    session.headers['sec-fetch-mode'] = 'navigate'
+    session.headers['sec-fetch-site'] = 'none'
+    try:
+        session.get('https://www.nseindia.com/option-chain', timeout=15)
+    except Exception:
+        pass
+    time.sleep(2)
+    # Switch to XHR-style headers for API calls
+    session.headers['Accept'] = 'application/json, text/plain, */*'
+    session.headers['Referer'] = 'https://www.nseindia.com/option-chain'
+    session.headers['sec-fetch-dest'] = 'empty'
+    session.headers['sec-fetch-mode'] = 'cors'
+    session.headers['sec-fetch-site'] = 'same-origin'
+    # Hit a lightweight API endpoint to warm up the session further
+    try:
+        session.get('https://www.nseindia.com/api/marketStatus', timeout=15)
+    except Exception:
+        pass
     time.sleep(1)
     return session
 
@@ -205,17 +233,16 @@ def fetch_option_chain(session: requests.Session) -> Optional[dict]:
             resp = session.get(url, timeout=15)
             resp.raise_for_status()
             data = resp.json()
-            # Validate structure before returning
             if data.get('records', {}).get('underlyingValue'):
                 return data
-            print(f"  [warn] attempt {attempt}: underlyingValue missing in response — retrying")
+            print(f"  [warn] attempt {attempt}: empty/incomplete response — retrying with fresh session")
             session = get_nse_session()
-            time.sleep(2)
+            time.sleep(3)
         except Exception as e:
             print(f"  [warn] attempt {attempt}: NSE fetch failed: {e}")
             if attempt < 3:
                 session = get_nse_session()
-                time.sleep(2)
+                time.sleep(3)
     return None
 
 def get_nifty_spot(chain_data: dict) -> Optional[float]:
