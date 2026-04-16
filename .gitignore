@@ -1,16 +1,18 @@
 # Project-specific ignores
 overnight_drift_Strategy/data/ohlc_cache/
 overnight_drift_Strategy/data/access_token_cache.json
-backtesting_2024_options/2024/
-backtesting_2024_options/backtest_outputs/*.pkl
-backtesting_true_data/bhav_cache/
-backtesting_true_data/option_minute_cache/
-backtesting_true_data/instruments_nfo.pkl
-backtesting_true_data_v2/bhav_cache/
-backtesting_true_data_v2/option_minute_cache/
-backtesting_true_data_v2/instruments_nfo.pkl
-v2/kite_minute_cache/
-v2/cache/access_token.txt
+gap_trading/kite_access_token.txt
+gap_trading/kite_minute_cache/
+gap_trading/v2/kite_minute_cache/
+gap_trading/v2/cache/access_token.txt
+gap_trading/v2/backtesting_2024_options/2024/
+gap_trading/v2/backtesting_2024_options/backtest_outputs/*.pkl
+gap_trading/v2/backtesting_true_data/bhav_cache/
+gap_trading/v2/backtesting_true_data/option_minute_cache/
+gap_trading/v2/backtesting_true_data/instruments_nfo.pkl
+gap_trading/v2/backtesting_true_data_v2/bhav_cache/
+gap_trading/v2/backtesting_true_data_v2/option_minute_cache/
+gap_trading/v2/backtesting_true_data_v2/instruments_nfo.pkl
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

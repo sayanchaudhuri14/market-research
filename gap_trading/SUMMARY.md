@@ -10,59 +10,67 @@
 
 ```
 market-research/
+├── gap_trading/                        ← ALL gap trading research (this folder)
+│   │
+│   ├── SUMMARY.md                      ← this file
+│   ├── run_everyday.ipynb              ← morning signal (run before 9:25 AM)
+│   ├── analyse_today.ipynb             ← post-trade review (run after 11:15 AM)
+│   ├── kite_access_token.txt           ← Kite access token (gitignored)
+│   ├── kite_minute_cache/              ← live session NIFTY 1-min cache (gitignored)
+│   │
+│   ├── cron/                           ← live paper-trading automation [OPERATIONAL]
+│   │   ├── config.py                   ← shared constants (all params, must match backtest)
+│   │   ├── entry.py                    ← 9:25 AM: fetch signal, place order
+│   │   ├── exit.py                     ← polls SL/TP every 10s, hard exit at 11:15
+│   │   ├── kite_auth.py                ← OAuth token refresh
+│   │   ├── kite_data.py                ← Kite API helpers
+│   │   └── v2_reliable_signals.csv     ← copy of v2 signals used at runtime
+│   │
+│   ├── v1/                             ← Phase 1: baseline correlation study
+│   │   ├── global_india_correlation.ipynb
+│   │   ├── aligned_dataset.csv
+│   │   └── [charts]
+│   │
+│   ├── v2/                             ← Phase 2: signal combos + all backtesting [ACTIVE]
+│   │   ├── v2_india_global.ipynb       ← main analysis notebook
+│   │   ├── v2_aligned_dataset.csv      ← 741 sessions × 45 features (Apr 2021–Apr 2026)
+│   │   ├── v2_reliable_signals.csv     ← 69 statistically significant combos [SOURCE OF TRUTH]
+│   │   ├── kite_minute_cache/          ← NIFTY 1-min OHLCV used for analysis (gitignored)
+│   │   ├── cache/                      ← global daily data + access token (gitignored)
+│   │   │
+│   │   ├── backtesting/                ← Phase 4a: BS simulation backtest [SUPERSEDED]
+│   │   │   ├── py_backtest.py          ← original (Black-Scholes, in-sample)
+│   │   │   ├── py_backtest_optimized.py← optimized timing: 09:25 entry, 11:15 exit (BS)
+│   │   │   ├── grid_search.py          ← 49-combo SL/TP grid (BS-based)
+│   │   │   └── backtest_trade_log.csv
+│   │   │
+│   │   ├── backtesting_true_data/      ← Phase 4b: NSE bhav entry + BS exit [SUPERSEDED]
+│   │   │   ├── backtest_real_data.ipynb
+│   │   │   ├── grid_search.py          ← original timing (09:16–10:15)
+│   │   │   ├── grid_search_optimized.py← optimized timing (09:26–11:15)
+│   │   │   ├── bhav_cache/             ← gitignored
+│   │   │   └── backtest_outputs/
+│   │   │
+│   │   ├── backtesting_true_data_v2/   ← Phase 4c: + 5-min SL lockout [SUPERSEDED]
+│   │   │   ├── backtest_real_data.ipynb
+│   │   │   ├── grid_search.py
+│   │   │   ├── bhav_cache/             ← gitignored
+│   │   │   └── backtest_outputs/
+│   │   │
+│   │   └── backtesting_2024_options/   ← Phase 4d: FULLY REAL DATA [CURRENT BEST]
+│   │       ├── grid_search_real.py     ← original timing (09:15 entry, 10:15 exit)
+│   │       ├── compare_entry_exit.py   ← OLD vs NEW timing comparison
+│   │       ├── sim_all_mode.py         ← always-PE vs always-CE simulation
+│   │       ├── 2024/                   ← 1,400+ CSV files (2.6 GB) (gitignored)
+│   │       └── backtest_outputs/
+│   │
+│   └── v3/                             ← Phase 3: added China/HangSeng/Oil/DXY (NOT ADOPTED)
+│       ├── v3_analysis.py
+│       ├── v3_aligned_dataset.csv
+│       ├── v3_new_signals.csv          ← 124 new combos (not adopted — marginal improvement)
+│       └── v3_backtest_compare.py
 │
-├── SUMMARY.md                          ← this file
-├── run_everyday.ipynb                  ← morning signal (run before 9:25 AM)
-├── analyse_today.ipynb                 ← post-trade review (run after 11:15 AM)
-├── .env                                ← Kite API credentials (api_key, api_secret)
-│
-├── v1/                                 ← Phase 1: baseline correlation study
-│   ├── global_india_correlation.ipynb
-│   ├── v1_aligned_dataset.csv
-│   └── [charts]
-│
-├── v2/                                 ← Phase 2: full signal combination analysis [ACTIVE]
-│   ├── v2_india_global.ipynb           ← main analysis notebook
-│   ├── v2_aligned_dataset.csv          ← 741 sessions × 45 features (Apr 2021–Apr 2026)
-│   ├── v2_reliable_signals.csv         ← 69 statistically significant combos [USED BY ALL SCRIPTS]
-│   ├── kite_minute_cache/              ← NIFTY 1-min OHLCV (.pkl chunks)
-│   └── cache/                          ← global daily data + access token
-│
-├── v3/                                 ← Phase 3: added China/HangSeng/Oil/DXY signals
-│   ├── v3_analysis.py
-│   ├── v3_aligned_dataset.csv
-│   ├── v3_new_signals.csv              ← 124 new combos (not adopted — see V3 section)
-│   └── v3_backtest_compare.py
-│
-├── backtesting/                        ← Phase 4a: BS simulation backtest [SUPERSEDED]
-│   ├── py_backtest.py                  ← original backtest (Black-Scholes, in-sample)
-│   ├── py_backtest_optimized.py        ← optimized timing: 09:25 entry, 11:15 exit (BS)
-│   ├── grid_search.py                  ← 49-combo SL/TP grid (BS-based)
-│   └── backtest_trade_log.csv
-│
-├── backtesting_true_data/              ← Phase 4b: NSE bhav copy entry + BS exit [SUPERSEDED]
-│   ├── backtest_real_data.ipynb
-│   ├── grid_search.py                  ← original timing grid (09:16–10:15)
-│   ├── grid_search_optimized.py        ← optimized timing (09:26–11:15)
-│   ├── bhav_cache/
-│   └── backtest_outputs/
-│
-├── backtesting_true_data_v2/           ← Phase 4c: same as above + 5-min SL lockout [SUPERSEDED]
-│   ├── backtest_real_data.ipynb
-│   ├── grid_search.py
-│   ├── bhav_cache/
-│   └── backtrack_outputs/
-│
-└── backtesting_2024_options/           ← Phase 4d: FULLY REAL DATA backtest [CURRENT BEST]
-    ├── grid_search_real.py             ← original timing (09:15 entry, 10:15 exit)
-    ├── compare_entry_exit.py           ← OLD vs NEW timing comparison on same signal days
-    ├── sim_all_mode.py                 ← always-PE vs always-CE simulation
-    ├── 2024/                           ← 1,400+ CSV files (2.6 GB)
-    │   ├── 2024{MON}/                  ← NIFTY-{EXPIRY}-{TRADE_DATE}.csv per day
-    │   ├── 2024Nifty/                  ← NIFTY spot 1-min monthly files
-    │   └── expiry.csv                  ← NSE expiry schedule
-    └── backtest_outputs/
-        └── grid_search_real_results.xlsx  ← original timing results (superseded)
+└── overnight_drift_Strategy/           ← CLOSED April 2026 (see its own RESEARCH_SUMMARY.md)
 ```
 
 ---
