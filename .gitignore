@@ -1,3 +1,6 @@
+# Claude Code
+.claude/
+
 # Project-specific ignores
 overnight_drift_Strategy/data/ohlc_cache/
 overnight_drift_Strategy/data/access_token_cache.json
