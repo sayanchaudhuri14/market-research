@@ -8,6 +8,8 @@ gap_trading/kite_access_token.txt
 gap_trading/kite_minute_cache/
 gap_trading/v2/kite_minute_cache/
 gap_trading/v2/cache/access_token.txt
+kite_token.json
+kite_minute_cache/
 gap_trading/v2/backtesting_2024_options/2024/
 gap_trading/v2/backtesting_2024_options/backtest_outputs/*.pkl
 gap_trading/v2/backtesting_true_data/bhav_cache/
