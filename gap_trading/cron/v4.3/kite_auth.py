@@ -30,7 +30,7 @@ from kiteconnect import KiteConnect
 # Paths
 _CRON_DIR    = Path(__file__).parent
 _ENV_FILE    = _CRON_DIR / ".env"
-_TOKEN_FILE  = _CRON_DIR / "kite_token.json"
+_TOKEN_FILE  = _CRON_DIR.parent / "kite_token.json"   # shared across v2 and v4.3
 
 _LOGIN_HEADERS = {
     "User-Agent": (
