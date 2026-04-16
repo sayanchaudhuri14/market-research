@@ -1,0 +1,76 @@
+{
+  "run_id": "v4.6_20260417_0214_real2024options",
+  "version": "v4.6",
+  "key_change": "NASDAQ confirmation filter: only trade if NASDAQ also non-positive (D-1)",
+  "data_source": "real_2024_options",
+  "period": "2024-01-04 to 2024-06-25",
+  "params": {
+    "SL_PCT": 0.15,
+    "TP_PCT": 0.4,
+    "BASE_LOTS": 2,
+    "MAX_LOTS": 10,
+    "DTE0_LOTS": 5,
+    "LOT_SIZE": 75,
+    "BEAR_N": 10,
+    "ENTRY_TIME": "09:25",
+    "EXIT_TIME": "11:15",
+    "INITIAL_CAPITAL": 3000.0
+  },
+  "results": {
+    "total_trades": 6,
+    "tp_hit_pct": 33.33,
+    "sl_hit_pct": 50.0,
+    "time_exit_pct": 16.67,
+    "profit_trade_pct": 50.0,
+    "loss_trade_pct": 50.0,
+    "avg_win_rs": 2881.11,
+    "avg_loss_rs": -1657.71,
+    "total_pnl_rs": 3670.18,
+    "net_return_pct": 28.64,
+    "xirr_pct": 70.52,
+    "max_drawdown_pct": 16.7074,
+    "starting_capital_rs": 3000.0,
+    "ending_capital_rs": 16486.4,
+    "refill_count": 1,
+    "total_refilled_rs": 9816.22,
+    "total_invested_rs": 12816.22,
+    "breakeven_win_pct": 27.3
+  },
+  "monthly": [
+    {
+      "month": "2024-01",
+      "trades": 2,
+      "wins": 1,
+      "pnl_rs": 1255.79,
+      "win_pct": 50.0
+    },
+    {
+      "month": "2024-02",
+      "trades": 1,
+      "wins": 1,
+      "pnl_rs": 3459.55,
+      "win_pct": 100.0
+    },
+    {
+      "month": "2024-03",
+      "trades": 1,
+      "wins": 0,
+      "pnl_rs": -2323.01,
+      "win_pct": 0.0
+    },
+    {
+      "month": "2024-04",
+      "trades": 1,
+      "wins": 1,
+      "pnl_rs": 3426.75,
+      "win_pct": 100.0
+    },
+    {
+      "month": "2024-06",
+      "trades": 1,
+      "wins": 0,
+      "pnl_rs": -2148.91,
+      "win_pct": 0.0
+    }
+  ]
+}

@@ -1,0 +1,125 @@
+{
+  "run_id": "v4.2_20260417_0212_real2024options",
+  "version": "v4.2",
+  "key_change": "Include Monday sessions (Friday US close used as global signal)",
+  "data_source": "real_2024_options",
+  "period": "2024-01-04 to 2024-12-05",
+  "params": {
+    "SL_PCT": 0.15,
+    "TP_PCT": 0.4,
+    "BASE_LOTS": 2,
+    "MAX_LOTS": 10,
+    "DTE0_LOTS": 5,
+    "LOT_SIZE": 75,
+    "BEAR_N": 10,
+    "ENTRY_TIME": "09:25",
+    "EXIT_TIME": "11:15",
+    "INITIAL_CAPITAL": 3000.0
+  },
+  "results": {
+    "total_trades": 75,
+    "tp_hit_pct": 32.0,
+    "sl_hit_pct": 61.33,
+    "time_exit_pct": 6.67,
+    "profit_trade_pct": 34.67,
+    "loss_trade_pct": 65.33,
+    "avg_win_rs": 10774.84,
+    "avg_loss_rs": -4562.51,
+    "total_pnl_rs": 56582.79,
+    "net_return_pct": 154.53,
+    "xirr_pct": 296.15,
+    "max_drawdown_pct": 62.4093,
+    "starting_capital_rs": 2992.5,
+    "ending_capital_rs": 93199.54,
+    "refill_count": 2,
+    "total_refilled_rs": 33624.25,
+    "total_invested_rs": 36616.75,
+    "breakeven_win_pct": 27.3
+  },
+  "monthly": [
+    {
+      "month": "2024-01",
+      "trades": 8,
+      "wins": 4,
+      "pnl_rs": 10605.77,
+      "win_pct": 50.0
+    },
+    {
+      "month": "2024-02",
+      "trades": 7,
+      "wins": 3,
+      "pnl_rs": 4785.48,
+      "win_pct": 42.9
+    },
+    {
+      "month": "2024-03",
+      "trades": 6,
+      "wins": 1,
+      "pnl_rs": -7274.23,
+      "win_pct": 16.7
+    },
+    {
+      "month": "2024-04",
+      "trades": 7,
+      "wins": 2,
+      "pnl_rs": -4990.99,
+      "win_pct": 28.6
+    },
+    {
+      "month": "2024-05",
+      "trades": 5,
+      "wins": 2,
+      "pnl_rs": 1537.22,
+      "win_pct": 40.0
+    },
+    {
+      "month": "2024-06",
+      "trades": 5,
+      "wins": 1,
+      "pnl_rs": -9351.71,
+      "win_pct": 20.0
+    },
+    {
+      "month": "2024-07",
+      "trades": 6,
+      "wins": 1,
+      "pnl_rs": -4495.66,
+      "win_pct": 16.7
+    },
+    {
+      "month": "2024-08",
+      "trades": 9,
+      "wins": 4,
+      "pnl_rs": 14392.56,
+      "win_pct": 44.4
+    },
+    {
+      "month": "2024-09",
+      "trades": 6,
+      "wins": 1,
+      "pnl_rs": -3695.66,
+      "win_pct": 16.7
+    },
+    {
+      "month": "2024-10",
+      "trades": 7,
+      "wins": 4,
+      "pnl_rs": 64361.32,
+      "win_pct": 57.1
+    },
+    {
+      "month": "2024-11",
+      "trades": 6,
+      "wins": 2,
+      "pnl_rs": 4732.07,
+      "win_pct": 33.3
+    },
+    {
+      "month": "2024-12",
+      "trades": 3,
+      "wins": 1,
+      "pnl_rs": -14023.39,
+      "win_pct": 33.3
+    }
+  ]
+}
