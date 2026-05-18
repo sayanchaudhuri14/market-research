@@ -128,6 +128,8 @@ def simulate_trades(signal_days: dict, params: dict) -> pd.DataFrame:
         # ── Refill if capital too low for even 1 lot ───────────────────────
         refill = 0.0
         if capital < cost_per_lot:
+            if params.get('NO_REFILL', False):
+                continue   # skip trade — insufficient capital, no refill
             refill  = cost_per_lot * BASE_LOTS - capital
             capital += refill
             peak    = max(peak, capital)

@@ -29,7 +29,7 @@ import pandas as pd
 import pytz
 import yfinance as yf
 
-sys.path.insert(0, os.path.dirname(__file__))
+sys.path.insert(0, '/home/ec2-user/Authorize_Kite')
 from kite_auth import get_kite
 import kite_data
 from config import (
