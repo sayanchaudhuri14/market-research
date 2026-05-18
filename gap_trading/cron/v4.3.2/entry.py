@@ -1,7 +1,13 @@
 #!/usr/bin/env python3
 """
-entry.py — Paper trading entry script for NIFTY gap strategy (v4.3).
+entry.py — Paper trading entry script for NIFTY gap strategy (v4.3.2).
 Runs at 9:25 AM IST Tue–Fri via cron.
+
+Change vs v4.3:
+  DTE gate: from EXPIRY_CHANGE_DATE (Sep 2 2025) onward, skip any day where
+  DTE != 0. Under the new Tuesday-expiry regime, DTE=0 (Tuesday) has a 45.5%
+  win rate while DTE=4 (Friday) and DTE=5 (Thursday) have 0% and 14%.
+  Before the expiry change the gate is inactive — all DTE values trade normally.
 
 Key change vs v2:
   SGX signal uses ^N225 trade-day Open (Tokyo 9:00 JST ≈ 5:30 IST) instead of
@@ -315,7 +321,7 @@ def main():
         return
 
     # 2. Fetch global market data
-    print(f"\nNIFTY Gap Strategy v4.3 — {today.strftime('%d %b %Y, %A')}")
+    print(f"\nNIFTY Gap Strategy v4.3.2 — {today.strftime('%d %b %Y, %A')}")
     print("Fetching global market data ...", end=' ', flush=True)
     gd = fetch_global_data(today)
     print("done.")
@@ -397,6 +403,16 @@ def main():
     strike_pe  = atm - STRIKE_STEP   # 1-OTM PUT
 
     print(f"  Expiry            : {expiry_str}  (DTE={dte})")
+
+    # 7b. DTE gate (v4.3.2): under Tuesday-expiry regime, only trade on expiry day
+    if today >= EXPIRY_CHANGE_DATE and dte != 0:
+        append_log("SKIP", {
+            "reason":     f"DTE gate: DTE={dte} — only DTE=0 (Tuesday) traded under new expiry regime",
+            "dte":        dte,
+            "expiry":     expiry_str,
+        })
+        print(f"\n  SKIP — DTE gate: DTE={dte}, only Tuesday expiry day (DTE=0) is traded.")
+        return
     print(f"  ATM               : {atm:,}  →  1-OTM PE strike: {strike_pe:,}")
 
     # 8. Fetch entry premium via Kite
@@ -466,7 +482,7 @@ def main():
         "buy_value":      round(buy_val, 2),
         "charges_entry":  round(charges, 4),
         "capital_before": round(capital, 2),
-        "version":        "v4.3",
+        "version":        "v4.3.2",
         "sgx_ret":        round(gd['sgx_ret'], 6) if gd['sgx_ret'] is not None else None,
     })
 

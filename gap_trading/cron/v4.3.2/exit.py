@@ -231,7 +231,7 @@ def _run():
     with open(POSITIONS_FILE) as f:
         pos = json.load(f)
 
-    if pos.get("status") == "cleared":
+    if not pos or pos.get("status") == "cleared":
         print(f"NO_POSITION — already cleared ({pos.get('cleared_date')}).")
         return
 

@@ -1,0 +1,18 @@
+# Credentials & tokens — never commit these
+.env
+kite_token.json
+
+# Runtime state
+state.json
+positions.json
+exit.lock
+
+# Daily caches (auto-regenerated)
+kite_nfo_instruments.json
+
+# Logs
+logs/
+
+# Python
+__pycache__/
+*.pyc
