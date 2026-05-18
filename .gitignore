@@ -2,6 +2,20 @@
 .claude/
 
 # Project-specific ignores
+
+# Raw options tick data (~2.6 GB)
+options minutewise data/
+
+# Live trading state (changes every session)
+DTE0_options/curr_live/logs/
+
+# Backtest caches (rebuilt on demand)
+DTE0_options/backtest_notebooks/gs_cache/
+
+# Build artifacts
+merged/
+build_merged.py
+
 overnight_drift_Strategy/data/ohlc_cache/
 overnight_drift_Strategy/data/access_token_cache.json
 gap_trading/kite_access_token.txt
