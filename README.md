@@ -28,6 +28,8 @@ Multi-leg NIFTY options strategies (Bear Call Spread, Bull Put Spread, Batman, S
 
 **Live paper trading** (Apr 23 – May 15, 2026): BCS DTE1/2/3/4 all positive. BPS paused at -12% to -18% DD within 3 weeks. Batman down -33% on a single stop-loss. Strip outperforming everything at +33.7% in 2 trades — but too few data points to conclude.
 
+**Structural finding**: On Sep 2, 2025, NIFTY weekly expiry moved from Thursday to Tuesday. This completely changed which DTE values the strategy trades on. Under Thursday expiry, Wednesday (DTE=2) had a 51.7% win rate — the best day. Under Tuesday expiry, Friday (DTE=4) has a 0% win rate across 6 trades; Tuesday expiry day (DTE=0) has 45.5%. The same strategy on the same signals produces opposite results depending on which day of the week it fires.
+
 **History note**: The original backtest had a sign bug (`-(piv @ wt)` instead of `nc - (piv @ wt)`) that inverted all P&L, making losses appear as profits. Results like "BCS +400%, Strip +826%" were fabricated. All results in this repo are from the corrected version with a 9-test verification suite.
 
 ---
@@ -36,7 +38,7 @@ Multi-leg NIFTY options strategies (Bear Call Spread, Bull Put Spread, Batman, S
 
 Buy the top 10 NIFTY 50 stocks by rolling 20-session overnight return at 3:20 PM, sell the next morning at 9:25 AM. The phenomenon is real and academically documented.
 
-**Why it was closed**: An S&P 500 filter appeared to boost the win rate to 74% with p < 0.0001 — until a lookahead bug was found. The backtest was reading the US session that closes *after* the India buy (2:30 AM IST vs 3:15 PM IST buy), making it effectively "trade when the US goes up tonight." After fixing the alignment, the corrected filter showed no statistically significant edge, and the pre-tax XIRR of ~9.5% fell below a NIFTY index fund after 20% STCG. Closed April 2026.
+**Why it was closed**: Two bugs found and fixed. First, survivorship bias — the initial backtest used the current 2026 NIFTY 50 composition for the full 2021–2026 history, inflating XIRR to ~16%. Replaced with point-in-time constituents from NSE rebalancing notices. Second, a lookahead bug in the S&P 500 filter: the backtest was reading the US session that closes *after* the India buy (2:30 AM IST vs 3:15 PM IST buy), making it effectively "trade when the US goes up tonight." That filter appeared to boost win rate to 74% with p < 0.0001. After fixing the alignment, no statistically significant edge remained, and the honest pre-tax XIRR of ~9.5% fell below a NIFTY index fund after 20% STCG. Closed April 2026.
 
 ---
 
