@@ -1,0 +1,8 @@
+Strategy,Trades,Win%,ROI,MaxDD
+"v7  (no gates, threshold=0.58)",10,40.0%,+8.4%,21.0%
+v8  L1 walk-forward (no gates),7,28.6%,-19.5%,24.8%
+"v10 no gates   (v7 model, reloaded)",11,45.5%,+11.3%,21.0%
+v10 gap_norm gate only,4,50.0%,+23.4%,17.9%
+v10 VIX pct gate only,5,60.0%,+29.3%,21.0%
+v10 ALL THREE gates (fixed sizing),2,100.0%,+50.3%,0.0%
+v10 ALL THREE gates + Kelly sizing,2,100.0%,+38.7%,0.0%

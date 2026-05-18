@@ -1,0 +1,6 @@
+Strategy,Trades,Win%,ROI,MaxDD
+"v7  (no gate, threshold=0.58)",10,40.0%,+8.4%,21.0%
+v8  L1 walk-forward (no gate),7,28.6%,-19.5%,24.8%
+v10 VIX gate (model trained on ALL),5,40.0%,+29.3%,21.0%
+v11 VIX gate (model trained on VIX-filtered),5,40.0%,+10.6%,19.1%
+v11 VIX+gap gate (model trained on both-filtered),17,47.1%,+88.0%,15.4%

@@ -1,0 +1,11 @@
+Signal,Depth,N,Wins,P_Win%,Edge_pp,p_val,Bonferroni
+Gap Up + SGX DOWN + VIX Falling,3,18,10,55.6,31.5,0.004079,
+Gap Up + US UP + SGX DOWN,3,16,8,50.0,25.9,0.021895,
+Gap Up + Prev India DOWN + US UP + DAX UP,4,24,11,45.8,21.7,0.016284,
+US UP + SGX DOWN + DAX UP + VIX Falling,4,20,9,45.0,20.9,0.032821,
+Gap Up + SGX DOWN + DAX UP,3,16,7,43.8,19.7,0.067049,
+Prev India UP + US UP + SGX DOWN + DAX UP,4,16,7,43.8,19.7,0.067049,
+SGX UP + VIX Spike,2,21,9,42.9,18.8,0.045447,
+Prev India DOWN + SGX UP + VIX Rising,3,21,9,42.9,18.8,0.045447,
+SGX UP + VIX Rising + VIX Spike,3,21,9,42.9,18.8,0.045447,
+Gap Up + Prev India DOWN + DAX UP + VIX Falling,4,21,9,42.9,18.8,0.045447,
