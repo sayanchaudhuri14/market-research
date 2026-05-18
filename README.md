@@ -10,13 +10,21 @@ Three independent research threads on NIFTY, all using real market data. Two are
 
 The core idea: NIFTY systematically fades gap-ups in the first hour. When global markets close up overnight, that move is priced in at the 9:15 open — and the first 2 hours tend to reverse. Buying a 1-OTM PUT at 9:25 AM (10 minutes after open, not at open) captures that reversal.
 
-**The 10-minute delay was the biggest single finding.** Same signals at 9:15 entry: -65.7% ROI on 2024 data. At 9:25 entry: +148.9%, 40% win rate.
+Entry triggers on combinations of overnight global signals: S&P 500, Nikkei 225 open, DAX, VIX, India close, gap size. 741 sessions × 13 binary features → 69 statistically significant bearish combos (binomial test, p < 0.05). The strategy skips ~75% of days and breakeven is 27.3% win rate.
 
-Entry triggers on combinations of overnight global signals: S&P 500, Nikkei 225 open, DAX, VIX, India close, gap size. 741 sessions × 13 binary features → 69 statistically significant bearish combos (binomial test, p < 0.05). The strategy skips ~75% of days. 0/10,000 Monte Carlo coin-flip simulations beat it on signal days.
+**In-sample results** (Jan 2024 – Mar 2026, combos selected on same data): 120 trades, 31.7% win rate, +147.7% ROI, 34.2% max drawdown. The in-sample number is inflated — the same data was used to select and evaluate the combos.
 
-**Currently live**: v4.3 running on EC2 (Tue–Fri, 9:25 AM IST). v4.3.2 running in parallel on Tuesday-only (expiry day) since Sep 2025, when NIFTY shifted from Thursday to Tuesday weekly expiry.
+**Genuine OOS results** (combos fixed, evaluated on unseen data):
 
-**Best research result**: v11 (L1 logistic + VIX + gap gates baked into training) — 47.1% win rate, +88% ROI, 15.4% max drawdown on 17 genuine OOS trades (Jul 2025 – Feb 2026). Not yet deployed.
+| Version | Period | Trades | Win% | ROI | MaxDD |
+|---|---|---|---|---|---|
+| v4.3 (no filter) | Jul 2025–Mar 2026 | 34 | 26.5% | -57.9% | 77.3% |
+| v7 L1 logistic | Jul 2025–Mar 2026 | 10 | 40.0% | +8.4% | 21.0% |
+| **v11 (VIX + gap gates)** | **Jul 2025–Feb 2026** | **17** | **47.1%** | **+88.0%** | **15.4%** |
+
+v11 applies VIX and gap-size gates *before* training the model, so the model learns only from regime-appropriate days. It is the best genuine OOS result but has only 17 trades — statistically under-powered.
+
+**Currently live**: v4.3 on EC2 (Tue–Fri). v4.3.2 running in parallel on Tuesday-only since Sep 2025, when NIFTY weekly expiry shifted from Thursday to Tuesday. v11 model exists (pkl) but not yet deployed.
 
 ---
 
