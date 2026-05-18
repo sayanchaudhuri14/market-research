@@ -61,22 +61,32 @@ Buy the top 10 NIFTY 50 stocks by rolling 20-session overnight return at 3:20 PM
 
 ---
 
-## Live Systems (EC2, Asia/Kolkata)
+## Infrastructure
+
+Running on an AWS EC2 t3.micro (always-on, ~Rs 700/month). t3.micro is sufficient — the scripts are I/O bound (Kite API calls, yfinance), not compute-intensive. The instance timezone is set to Asia/Kolkata so cron fires at IST without any offset arithmetic.
+
+**Two-script architecture** — `entry.py` and `exit.py` are separate cron jobs, not one long-running process. Entry fires at 9:25 AM, writes the open position to `positions.json`, and exits. Exit fires at 9:27 AM, reads that file, and polls Kite every 2 minutes until SL/TP or the 11:15 AM hard stop. This means a crash in exit.py doesn't affect the next day's entry, and the process doesn't need to stay alive overnight.
+
+**Kite authentication** is fully automated — `pyotp` generates the TOTP code from the base32 seed, logs into Zerodha programmatically, and caches the session token in `kite_token.json`. No browser, no manual step. Multiple cron scripts share the same token file; generating a new token from any script invalidates all others (Kite's single-session constraint), so a separate `kite_auth` cron runs at 9:15 AM and writes the token once before all trading scripts start.
+
+**Reliability details in the code:**
+- `positions.json` is written atomically (`tempfile` + `os.replace`) so a crash mid-write never leaves a corrupt file that the next day's exit.py reads
+- `exit.py` uses a lockfile to prevent duplicate runs if cron fires twice
+- Capital state (`state.json`) is updated atomically after every trade close
+- All events appended to `trade_log.jsonl` with `fsync` before returning — survives an EC2 reboot mid-session
 
 ```
-# Gap PUT strategy — v4.3 (Tue–Fri)
-25 9 * * 2-5  python3 .../cron/v4.3/entry.py
+# Cron (EC2, Asia/Kolkata)
+15 9 * * 2-5  python3 .../Authorize_Kite/kite_auth.py          # auth once, shared token
+
+25 9 * * 2-5  python3 .../cron/v4.3/entry.py                   # gap PUT v4.3
 27 9 * * 2-5  python3 .../cron/v4.3/exit.py
 
-# Gap PUT strategy — v4.3.2 (Tuesday only, DTE=0 gate)
-25 9 * * 2    python3 .../cron/v4.3.2/entry.py
+25 9 * * 2    python3 .../cron/v4.3.2/entry.py                 # gap PUT v4.3.2 (Tue only)
 27 9 * * 2    python3 .../cron/v4.3.2/exit.py
 
-# DTE0 weekly options (Tue–Fri)
 25 9 * * 2-5  python3 .../DTE0_options/curr_live/cron/paper_trader.py
 ```
-
-Kite authentication is fully automated — TOTP via pyotp, no browser. Token shared across systems to avoid session conflicts.
 
 ---
 
