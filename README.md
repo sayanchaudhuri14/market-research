@@ -63,7 +63,7 @@ Buy the top 10 NIFTY 50 stocks by rolling 20-session overnight return at 3:20 PM
 
 ## Infrastructure
 
-Running on an AWS EC2 t3.micro (always-on, ~Rs 700/month). t3.micro is sufficient — the scripts are I/O bound (Kite API calls, yfinance), not compute-intensive. The instance timezone is set to Asia/Kolkata so cron fires at IST without any offset arithmetic.
+Running on an AWS EC2 t3.micro (always-on). The scripts are I/O bound — Kite API calls, yfinance fetches — so a t3.micro is more than sufficient. Instance timezone is set to Asia/Kolkata so cron fires at IST without offset arithmetic.
 
 **Two-script architecture** — `entry.py` and `exit.py` are separate cron jobs, not one long-running process. Entry fires at 9:25 AM, writes the open position to `positions.json`, and exits. Exit fires at 9:27 AM, reads that file, and polls Kite every 2 minutes until SL/TP or the 11:15 AM hard stop. This means a crash in exit.py doesn't affect the next day's entry, and the process doesn't need to stay alive overnight.
 
